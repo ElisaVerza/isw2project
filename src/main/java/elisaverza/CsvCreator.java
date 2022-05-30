@@ -30,7 +30,7 @@ public class CsvCreator {
     private static final String CSV_VERSIONS = "03-versionsdata.csv";
     private static final String CSV_METHRICS = "04-data.csv";
     private static final String CSV_CACHE = "05-commitcache.csv";
-    private static final boolean DOWNLOAD_DATA = true;
+    public static final boolean DOWNLOAD_DATA = true;
 
 
     public static void downloadFiles() throws IOException, ParseException{
@@ -73,15 +73,12 @@ public class CsvCreator {
 
     public static void searchBugginess(String version, String files) throws IOException, CsvException{
         Integer j=1;
-        System.out.println("ciao");
         List<List<String>> dataCsv = DataRetrieve.csvToList(CSV_METHRICS);
         while(!dataCsv.get(j).get(0).equals(version)){
             j++;
         }
         while(dataCsv.get(j).get(0).equals(version)){
-            System.out.println(version+" "+dataCsv.get(j).get(0));
-
-            if(files.contains(dataCsv.get(j).get(2))){
+            if(files.contains(dataCsv.get(j).get(1))){
                 updateDataCSV(CSV_METHRICS, "YES", j, 11);
             }
             j++;
@@ -227,7 +224,7 @@ public class CsvCreator {
         if(DOWNLOAD_DATA){
             bugginess();
         }
-        //Methrics.locTouched();
+        Methrics.locTouched();
 
     }
 }
