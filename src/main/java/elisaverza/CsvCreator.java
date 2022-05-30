@@ -13,6 +13,8 @@ import java.util.List;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
+import javax.xml.crypto.Data;
+
 import com.opencsv.CSVReader;
 import com.opencsv.CSVWriter;
 import com.opencsv.exceptions.CsvException;
@@ -98,8 +100,9 @@ public class CsvCreator {
      * @param rowIndex indice di riga da modificare per impostare buggy a yes
      * @param version la versione di interesse da cercare nella colonna AV del csv ticketdata
      * @return void
+     * @throws ParseException
      */
-    public static void fileTouched(String lineTicket, String version,  FileWriter csvWriter) throws IOException, CsvException{
+    public static void fileTouched(String lineTicket, String version,  FileWriter csvWriter) throws IOException, CsvException, ParseException{
         //LOGGER.warning("Ricerca file toccati dai commit in corso...");
         //LOGGER.warning(version);        
         Integer k;
@@ -127,12 +130,13 @@ public class CsvCreator {
                     }
                 }
                 if(files.size()!=0){
+                    String ticketVersion = DataRetrieve.getVersionByDate(values[0]);
                     String filesStr = files.stream().map(n -> String.valueOf(n)).collect(Collectors.joining(" ", "", ""));
                     String addedStr = added.stream().map(n -> String.valueOf(n)).collect(Collectors.joining(" ", "", ""));
                     String deletedStr = deleted.stream().map(n -> String.valueOf(n)).collect(Collectors.joining(" ", "", ""));
                     searchBugginess(version, filesStr);
 
-                    csvWriter.append(version+","+sha+","+filesStr+","+addedStr+","+deletedStr+"\n");
+                    csvWriter.append(ticketVersion+","+sha+","+filesStr+","+addedStr+","+deletedStr+"\n");
                 } 
             }
         }
@@ -224,7 +228,7 @@ public class CsvCreator {
         if(DOWNLOAD_DATA){
             bugginess();
         }
-        Methrics.locTouched();
+        //Methrics.locTouched();
 
     }
 }

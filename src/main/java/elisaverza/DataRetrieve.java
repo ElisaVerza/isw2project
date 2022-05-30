@@ -21,6 +21,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
 
 import com.opencsv.CSVReader;
 import com.opencsv.exceptions.CsvException;
@@ -42,7 +43,7 @@ public class DataRetrieve
     private static final String PRJ_NAME = "SYNCOPE";
     private static final String USERNAME = "ElisaVerza";
     private static final boolean DOWNLOAD_COMMIT = false;
-    private static final boolean DOWNLOAD_JIRA = false;
+    private static final boolean DOWNLOAD_JIRA = true;
     private static final boolean DOWNLOAD_VERSIONS = false;
     private static final String AUTH_CODE = "auth_code.txt";
     private static final String DATE_FORMAT = "yyyy-MM-dd";
@@ -412,10 +413,39 @@ public class DataRetrieve
             for(k=0;k<commit.length;k++){
                 if(commit[k] != null){
                     commit[k] = commit[k].replace("\n", " ");
-                    jiraWriter.append(commit[k]+","+affectedStr+","+oldestFixed.getValue(1)+","+ov+","+ovDate+","+fixDate+"\n");
+                    String[] commitArray = commit[k].split(",");
+                    String methricsData = downloadCommitData(commitArray[1]);
+
+                    jiraWriter.append(commit[k]+","+affectedStr+","+oldestFixed.getValue(1)+","+ov+","+ovDate+","+fixDate+","+methricsData+"\n");
                 }
             }
         }
+    }
+
+    public static String downloadCommitData(String sha) throws JSONException, IOException{
+        Integer k;
+        String filesStr = "";
+        String addedStr = "";
+        String deletedStr = "";
+        String classesUrl = "https://api.github.com/repos/apache/"+PRJ_NAME+"/commits/"+sha.replace("\"", "");
+        JSONObject classesJsonObj = DataRetrieve.readJsonObjFromUrl(classesUrl, true);
+        JSONArray jsonClasses = new JSONArray(classesJsonObj.getJSONArray("files"));
+        List<String> files = new ArrayList<>();
+        List<Integer> added = new ArrayList<>();
+        List<Integer> deleted = new ArrayList<>();
+        for(k=0; k<jsonClasses.length();k++){
+            if(jsonClasses.getJSONObject(k).getString("filename").contains(".java")){
+                files.add(jsonClasses.getJSONObject(k).getString("filename"));
+                added.add(jsonClasses.getJSONObject(k).getInt("additions"));
+                deleted.add(jsonClasses.getJSONObject(k).getInt("deletions"));
+            }
+        }
+        if(files.size()!=0){
+            filesStr = files.stream().map(n -> String.valueOf(n)).collect(Collectors.joining(" ", "", ""));
+            addedStr = added.stream().map(n -> String.valueOf(n)).collect(Collectors.joining(" ", "", ""));
+            deletedStr = deleted.stream().map(n -> String.valueOf(n)).collect(Collectors.joining(" ", "", ""));
+        }
+        return filesStr+","+addedStr+","+deletedStr;
     }
 
     public static void labeling() throws IOException, CsvException{
@@ -592,7 +622,7 @@ public class DataRetrieve
                 jiraData(jiraWriter); 
             }
         }
-        labeling();
+        //labeling();
     }
 
 
