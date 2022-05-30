@@ -73,6 +73,7 @@ public class CsvCreator {
 
     public static void searchBugginess(String version, String files) throws IOException, CsvException{
         Integer j=1;
+        System.out.println("ciao");
         List<List<String>> dataCsv = DataRetrieve.csvToList(CSV_METHRICS);
         while(!dataCsv.get(j).get(0).equals(version)){
             j++;
