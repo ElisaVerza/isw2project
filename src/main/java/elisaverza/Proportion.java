@@ -33,14 +33,14 @@ public class Proportion {
         Float[] propArray = new Float[0];
         String injected = " ";
 
-        List<List<String>> csv = DataRetrieve.csvToList(CSV_JIRA);
+        List<List<String>> csv = Utility.csvToList(CSV_JIRA);
 
         for(i = 1; i<csv.size(); i++) {
             String[] affected = csv.get(i).get(3).split(" ");
             if(affected.length != 0){
                 injected = affected[0];
             }
-            List<List<String>> versions = DataRetrieve.csvToList(CSV_VERSIONS);
+            List<List<String>> versions = Utility.csvToList(CSV_VERSIONS);
 
             injIndex = indexCalc(versions, injected);
             fixIndex = indexCalc(versions,  csv.get(i).get(4));
@@ -73,7 +73,7 @@ public class Proportion {
     }
 
     public static String ivCalc(String fixed, String ov, Float p) throws CsvValidationException, IOException{
-        List<List<String>> csv = DataRetrieve.csvToList(CSV_VERSIONS);
+        List<List<String>> csv = Utility.csvToList(CSV_VERSIONS);
         String[] ovArray = {ov};
         String[] fvArray = {fixed};
         Integer ovIndex = (Integer) DataRetrieve.minVersion(ovArray).getValue(0);

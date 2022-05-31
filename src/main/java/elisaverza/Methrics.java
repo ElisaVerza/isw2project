@@ -3,7 +3,6 @@ package elisaverza;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.text.ParseException;
-import java.util.ArrayList;
 import java.util.List;
 
 import com.opencsv.exceptions.CsvException;
@@ -11,9 +10,9 @@ import com.opencsv.exceptions.CsvException;
 public class Methrics {
 
     private static final String CSV_METHRICS = "04-data.csv";
-    private static final String CSV_CACHE = "05-commitcache.csv";
+    private static final String CSV_JIRA = "02-ticketdata.csv";
 
-    private static void resetFile(List<List<String>> file) throws IOException, CsvException{
+    private static void resetFile(List<List<String>> file) throws IOException{
         Integer i;
         try(FileWriter csvWriter = new FileWriter(CSV_METHRICS)){
             for(i=1; i<file.size(); i++){
@@ -23,33 +22,44 @@ public class Methrics {
         }
     }
 
-    public static void locTouched() throws IOException, ParseException, CsvException, InterruptedException{
-        Integer i;
-        Integer j;
+    public static void methricsWriter(String filesString, String addedString, String deletedString, List<List<String>> methrics, Integer j) throws IOException, CsvException{
         Integer k;
         Integer currLocT = 0;
-        List<List<String>> commit = DataRetrieve.csvToList(CSV_CACHE);
-        List<List<String>> methrics = DataRetrieve.csvToList(CSV_METHRICS);
+
+        String[] files = filesString.split(" ");
+        String[] added = addedString.split(" ");
+        String[] deleted = deletedString.split(" ");
+
+        for(k=0; k<files.length; k++){
+            if(files[k].equals(methrics.get(j).get(1))){
+                currLocT = Integer.valueOf(methrics.get(j).get(2));
+                currLocT = currLocT+Integer.valueOf(added[k])+Integer.valueOf(deleted[k]);
+                CsvCreator.updateDataCSV(CSV_METHRICS, currLocT.toString(), j, 2);
+                // bisogna inserire locAdded(added[k], j) nel codice per renderlo efficace
+
+            }
+        }
+
+    }
+
+    public static void locTouched() throws IOException, CsvException, NumberFormatException, ParseException{
+        Integer i;
+        Integer j;
+        List<List<String>> commit = Utility.csvToList(CSV_JIRA);
+        List<List<String>> methrics = Utility.csvToList(CSV_METHRICS);
         if(!CsvCreator.DOWNLOAD_DATA){
-            resetFile(commit);
+            resetFile(methrics);
         }
         for(i=0; i<commit.size(); i++){
-            for(j=0; j<methrics.size(); j++){
-                if(commit.get(i).get(0).equals(methrics.get(j).get(0))){
-
-                    String[] files = commit.get(i).get(2).split(" ");
-                    String[] added = commit.get(i).get(3).split(" ");
-                    String[] deleted = commit.get(i).get(4).split(" ");
-
-                    for(k=0; k<files.length; k++){
-                        if(files[k].contains(methrics.get(j).get(1))){
-                            currLocT = Integer.valueOf(methrics.get(j).get(2));
-                            currLocT = currLocT+Integer.valueOf(added[k])+Integer.valueOf(deleted[k]);
-                            CsvCreator.updateDataCSV(CSV_METHRICS, currLocT.toString(), j, 2);
-                            locAdded(added[k], j);
-                        }
-                    }
+            j=0;
+            while(!commit.get(i).get(0).equals(methrics.get(j).get(0))){
+                j++;
+            }
+            while(j<methrics.size() && commit.get(i).get(0).equals(methrics.get(j).get(0))){
+                if(commit.get(i).size()>9){
+                    methricsWriter(commit.get(i).get(8), commit.get(i).get(9), commit.get(i).get(10), methrics, j);
                 }
+                j++;
             }
         }
     }
@@ -58,7 +68,7 @@ public class Methrics {
         CsvCreator.updateDataCSV(CSV_METHRICS, added, row, 3);
     }
 
-    public static void main(String[] args) throws IOException, ParseException, CsvException, InterruptedException{
+    public static void main(String[] args) throws IOException, CsvException, NumberFormatException, ParseException{
         locTouched();
     }
 
