@@ -36,7 +36,7 @@ public class Methrics {
                 currLocT = Integer.valueOf(methrics.get(j).get(2));
                 currLocT = currLocT+Integer.valueOf(added[k])+Integer.valueOf(deleted[k]);
                 CsvCreator.updateDataCSV(CSV_METHRICS, currLocT.toString(), j, 2);
-                //locAdded(added[k], j);
+                locAdded(added[k], j);
 
             }
         }
