@@ -16,13 +16,13 @@ public class Methrics {
         Integer i;
         try(FileWriter csvWriter = new FileWriter(CSV_METHRICS)){
             for(i=1; i<file.size(); i++){
-                csvWriter.append(file.get(i).get(0)+","+file.get(i).get(1)+","+0+","+0+","+0+","+0+","+0+","+0+","+0+","+0+","+0+","+file.get(i).get(11));
+                csvWriter.append(file.get(i).get(0)+","+file.get(i).get(1)+",0,0,0,0,0,0,0,0,0,"+file.get(i).get(11)+"\n");
             }
 
         }
     }
 
-    public static void methricsWriter(String filesString, String addedString, String deletedString, List<List<String>> methrics, Integer j) throws IOException, CsvException{
+    public static void methricsWriter(String filesString, String addedString, String deletedString, List<List<String>> methrics, Integer j, Integer temp) throws IOException, CsvException, InterruptedException{
         Integer k;
         Integer currLocT = 0;
 
@@ -32,17 +32,17 @@ public class Methrics {
 
         for(k=0; k<files.length; k++){
             if(files[k].equals(methrics.get(j).get(1))){
+
                 currLocT = Integer.valueOf(methrics.get(j).get(2));
                 currLocT = currLocT+Integer.valueOf(added[k])+Integer.valueOf(deleted[k]);
                 CsvCreator.updateDataCSV(CSV_METHRICS, currLocT.toString(), j, 2);
-                // bisogna inserire locAdded(added[k], j) nel codice per renderlo efficace
+                //locAdded(added[k], j);
 
             }
         }
-
     }
 
-    public static void locTouched() throws IOException, CsvException, NumberFormatException, ParseException{
+    public static void locTouched() throws IOException, CsvException, NumberFormatException, ParseException, InterruptedException{
         Integer i;
         Integer j;
         List<List<String>> commit = Utility.csvToList(CSV_JIRA);
@@ -50,14 +50,14 @@ public class Methrics {
         if(!CsvCreator.DOWNLOAD_DATA){
             resetFile(methrics);
         }
-        for(i=0; i<commit.size(); i++){
-            j=0;
+        for(i=1; i<commit.size(); i++){
+            j=1;
             while(!commit.get(i).get(0).equals(methrics.get(j).get(0))){
                 j++;
             }
             while(j<methrics.size() && commit.get(i).get(0).equals(methrics.get(j).get(0))){
                 if(commit.get(i).size()>9){
-                    methricsWriter(commit.get(i).get(8), commit.get(i).get(9), commit.get(i).get(10), methrics, j);
+                    methricsWriter(commit.get(i).get(8), commit.get(i).get(9), commit.get(i).get(10), methrics, j, i);
                 }
                 j++;
             }
@@ -68,7 +68,7 @@ public class Methrics {
         CsvCreator.updateDataCSV(CSV_METHRICS, added, row, 3);
     }
 
-    public static void main(String[] args) throws IOException, CsvException, NumberFormatException, ParseException{
+    public static void main(String[] args) throws IOException, CsvException, NumberFormatException, ParseException, InterruptedException{
         locTouched();
     }
 

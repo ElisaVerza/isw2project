@@ -30,9 +30,9 @@ public class DataRetrieve
     private static final String CSV_JIRA = "02-ticketdata.csv";
     private static final String CSV_VERSIONS = "03-versionsdata.csv";
     private static final String PRJ_NAME = "SYNCOPE";
-    private static final boolean DOWNLOAD_COMMIT = false;
-    private static final boolean DOWNLOAD_JIRA = false;
-    private static final boolean DOWNLOAD_VERSIONS = false;
+    private static final boolean DOWNLOAD_COMMIT = true;
+    private static final boolean DOWNLOAD_JIRA = true;
+    private static final boolean DOWNLOAD_VERSIONS = true;
     private static final String DATE_FORMAT = "yyyy-MM-dd";
 
 
@@ -251,6 +251,8 @@ public class DataRetrieve
         }
         File ticketFile = new File(CSV_JIRA);
         try(FileWriter versionsWriter = new FileWriter(ticketFile)){
+
+            versionsWriter.append("version,commit sha,jira_id,affected versions,fixed version,opening version,opening data,fixed data,commit file,added,deleted\n");
             for(j=0; j<toCopy.size(); j++){
                 versionsWriter.append(toCopy.get(j).get(0)+","+toCopy.get(j).get(1)+","+toCopy.get(j).get(2)
                 +","+toCopy.get(j).get(3)+","+toCopy.get(j).get(4)+","+toCopy.get(j).get(5)+","
@@ -391,7 +393,7 @@ public class DataRetrieve
 
             File jiraFile = new File(CSV_JIRA);
             try(FileWriter jiraWriter = new FileWriter(jiraFile)){
-                jiraWriter.append("commit date git,commit sha,jira_id,affected versions,fixed version\n");
+                jiraWriter.append("version,commit sha,jira_id,affected versions,fixed version,opening version,opening data,fixed data,commit file,added,deleted\n");
                 jiraData(jiraWriter); 
             }
         }

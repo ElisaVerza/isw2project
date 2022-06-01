@@ -35,7 +35,7 @@ public class Utility {
     private static final String AUTH_CODE = "auth_code.txt";
     private static final String DATE_FORMAT = "yyyy-MM-dd";
 
-
+//Salta
     public static Date getLastRelease() throws IOException, ParseException{
         Date last = new Date();
         try(BufferedReader br = new BufferedReader(new FileReader(CSV_VERSIONS))){
@@ -47,7 +47,7 @@ public class Utility {
         }
         return last;
     }
-
+//Salta
     public static void sortVersions() throws IOException{
         Integer i;
         Map<String, String> versionMap = new HashMap<>();
@@ -69,6 +69,7 @@ public class Utility {
             }
         }
     }
+//Salta
 
     public static String getVersionByDate(String date) throws IOException, ParseException{
         Date openingToDate = new SimpleDateFormat(DATE_FORMAT).parse(date);
