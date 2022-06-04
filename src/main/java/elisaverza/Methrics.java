@@ -2,8 +2,11 @@ package elisaverza;
 
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
+import com.opencsv.CSVWriter;
 import com.opencsv.exceptions.CsvException;
 
 public class Methrics {
@@ -32,11 +35,10 @@ public class Methrics {
         for(k=0; k<files.length; k++){
             if(files[k].equals(methrics.get(j).get(1))){
                 currLocT = Integer.valueOf(methrics.get(j).get(2));
-                System.out.println(methrics.get(j).get(1)+" "+currLocT);
                 currLocT = currLocT+Integer.valueOf(added[k])+Integer.valueOf(deleted[k]);
-                System.out.println(methrics.get(j).get(1)+" "+currLocT);
-                CsvCreator.updateDataCSV(CSV_METHRICS, currLocT.toString(), j, 2);
+                Integer counter = Integer.valueOf(methrics.get(j).get(5))+1;
                 methrics.get(j).set(2, currLocT.toString());
+                methrics.get(j).set(5, counter.toString());
                 locAdded(methrics, added[k], j);
                 maxLocAdded(methrics, added[k], j);
             }
@@ -65,23 +67,31 @@ public class Methrics {
                 j++;
             }
         }
-    }
-
-    public static void maxLocAdded(List<List<String>> methrics, String currAdded, Integer row) throws IOException, CsvException{
-        Integer lastLocA = Integer.valueOf(methrics.get(row).get(4));
-        if(lastLocA<Integer.valueOf(currAdded)){
-            CsvCreator.updateDataCSV(CSV_METHRICS, currAdded, row, 4);
-            methrics.get(row).set(4, currAdded);
-
+        try(CSVWriter csvWriter = new CSVWriter(new FileWriter(CSV_METHRICS));){
+            List<String[]> collect = new ArrayList<>();
+            for(i=0; i<methrics.size();i++){
+                String[] strArray = methrics.get(i).toArray(String[]::new);
+                collect.add(strArray);
+            }
+            csvWriter.writeAll(collect);        
         }
     }
 
     public static void locAdded(List<List<String>> methrics, String added, Integer row) throws IOException, CsvException{
         Integer currLocA = Integer.valueOf(methrics.get(row).get(3));
         currLocA = currLocA+Integer.valueOf(added);
-
-        CsvCreator.updateDataCSV(CSV_METHRICS, currLocA.toString(), row, 3);
         methrics.get(row).set(3, currLocA.toString());
+    }
+
+    public static void maxLocAdded(List<List<String>> methrics, String currAdded, Integer row) throws IOException, CsvException{
+        Integer lastLocA = Integer.valueOf(methrics.get(row).get(4));
+        if(lastLocA<Integer.valueOf(currAdded)){
+            methrics.get(row).set(4, currAdded);
+        }
+    }
+
+    public static void avgLocAdded(){
+
     }
 
     public static void main(String[] args) throws IOException, CsvException, NumberFormatException{
