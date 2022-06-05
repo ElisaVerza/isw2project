@@ -23,13 +23,13 @@ import org.json.JSONObject;
 
 public class CsvCreator {
     private static final Logger LOGGER = Logger.getLogger(CsvCreator.class.getName());
-    public static final String PRJ_NAME = "SYNCOPE";
+    public static final String PRJ_NAME = "BOOKKEEPER";
     private static final String CSV_COMMIT = "01-commitdata.csv";
     private static final String CSV_JIRA = "02-ticketdata.csv";
     private static final String CSV_VERSIONS = "03-versionsdata.csv";
     private static final String CSV_METHRICS = "04-data.csv";
-    public static final boolean DOWNLOAD_DATA = false;
-    public static final boolean DOWNLOAD_FILES = false;
+    public static final boolean DOWNLOAD_DATA = true;
+    public static final boolean DOWNLOAD_FILES = true;
 
 
     public static void downloadFiles() throws IOException, ParseException{
@@ -41,7 +41,7 @@ public class CsvCreator {
             String lineVd = brVd.readLine();
             String [] commitSha = new String[0];
             try(FileWriter csvWriter = new FileWriter(CSV_METHRICS)){
-                csvWriter.append("versione,file,LOC Touched, metrica2, metrica3, metrica4, metrica5, metrica6, metrica7, metrica8, metrica9, bugginess\n");
+                csvWriter.append("versione,file,LOC Touched,LOC added,Max LOC added,Avg LOC added,Churn,Max churn,Avg churn,Change set size,Max change set,Avg change set\n");
 
                 while((lineVd = brVd.readLine()) != null ) {
                     String[] valuesVd = lineVd.split(",");
@@ -59,7 +59,7 @@ public class CsvCreator {
 
                         for(k = 0; k<jsonFiles.length(); k++){
                             if(jsonFiles.getJSONObject(k).getString("path").contains(".java")){
-                                csvWriter.append(valuesVd[0]+","+jsonFiles.getJSONObject(k).getString("path")+","+0+","+0+","+0+","+0+","+0+","+0+","+0+","+0+","+0+","+"No\n");
+                                csvWriter.append(valuesVd[0]+","+jsonFiles.getJSONObject(k).getString("path")+",0,0,0,0,0,0,0,0,0,0,"+"No\n");
                             }
                         }
                     }
@@ -78,7 +78,7 @@ public class CsvCreator {
         }
         while(j<dataCsv.size() && dataCsv.get(j).get(0).equals(affectedVersion)){
             if(commitFiles.contains(dataCsv.get(j).get(1))){
-                updateDataCSV(CSV_METHRICS, "YES", j, 11);
+                updateDataCSV(CSV_METHRICS, "YES", j, 12);
             }
             j++;
         }

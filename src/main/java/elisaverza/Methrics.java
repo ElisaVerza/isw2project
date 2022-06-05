@@ -15,9 +15,9 @@ public class Methrics {
     private static void resetFile(List<List<String>> file) throws IOException{
         Integer i;
         try(FileWriter csvWriter = new FileWriter(CSV_METHRICS)){
-            csvWriter.append("versione,file,LOC Touched, metrica2, metrica3, metrica4, metrica5, metrica6, metrica7, metrica8, metrica9, bugginess\n");
+            csvWriter.append("versione,file,LOC Touched,LOC added,Max LOC added,Avg LOC added,Churn,Max churn,Avg churn,Change set size,Max change set,Avg change set\n");
             for(i=1; i<file.size(); i++){
-                csvWriter.append(file.get(i).get(0)+","+file.get(i).get(1)+",0,0,0,0,0,0,0,0,0,"+file.get(i).get(11)+"\n");
+                csvWriter.append(file.get(i).get(0)+","+file.get(i).get(1)+",0,0,0,0,0,0,0,0,0,0,"+file.get(i).get(12)+"\n");
             }
 
         }
@@ -36,14 +36,17 @@ public class Methrics {
                 currLocT = currLocT+Integer.valueOf(added[k])+Integer.valueOf(deleted[k]);
                 Integer counter = Integer.valueOf(methrics.get(j).get(5))+1;
                 Integer counterChurn = Integer.valueOf(methrics.get(j).get(8))+1;
+                Integer counterChg = Integer.valueOf(methrics.get(j).get(11))+1;
                 methrics.get(j).set(2, currLocT.toString());
                 methrics.get(j).set(5, counter.toString());
                 methrics.get(j).set(8, counterChurn.toString());
+                methrics.get(j).set(11, counterChg.toString());
                 locAdded(methrics, added[k], j);
                 maxLocAdded(methrics, added[k], j);
                 churn(methrics, addedString, deletedString, j, k);
                 maxChurn(methrics, added, deleted, j, k);
-                chgSetSize(methrics, j);
+                chgSetSize(methrics, j, filesString);
+                maxChgSet(methrics, j, filesString);
             }
         }
     }
@@ -73,6 +76,7 @@ public class Methrics {
 
         avgLocAdded(methrics);
         avgChurn(methrics);
+        avgChgSet(methrics);
         try(CSVWriter csvWriter = new CSVWriter(new FileWriter(CSV_METHRICS));){
             List<String[]> collect = new ArrayList<>();
             for(i=0; i<methrics.size();i++){
@@ -83,13 +87,13 @@ public class Methrics {
         }
     }
 
-    public static void locAdded(List<List<String>> methrics, String added, Integer row) throws IOException, CsvException{
+    public static void locAdded(List<List<String>> methrics, String added, Integer row){
         Integer currLocA = Integer.valueOf(methrics.get(row).get(3));
         currLocA = currLocA+Integer.valueOf(added);
         methrics.get(row).set(3, currLocA.toString());
     }
 
-    public static void maxLocAdded(List<List<String>> methrics, String currAdded, Integer row) throws IOException, CsvException{
+    public static void maxLocAdded(List<List<String>> methrics, String currAdded, Integer row){
         Integer lastLocA = Integer.valueOf(methrics.get(row).get(4));
         if(lastLocA<Integer.valueOf(currAdded)){
             methrics.get(row).set(4, currAdded);
@@ -154,9 +158,37 @@ public class Methrics {
 
     }
 
-    public static void chgSetSize(List<List<String>> methrics, Integer j){
-        String[] filesList = methrics.get(j).get(8).split(" ");
-        methrics.get(j).set(9, String.valueOf(filesList.length));
+    public static void chgSetSize(List<List<String>> methrics, Integer j, String commitFiles){
+        String[] filesList = commitFiles.split(" ");
+        methrics.get(j).set(9, String.valueOf(filesList.length+Integer.valueOf(methrics.get(j).get(9))));
+    }
+
+    public static void maxChgSet(List<List<String>> methrics, Integer index, String commitFiles){
+        Integer currMaxChgSet = Integer.valueOf(methrics.get(index).get(10));
+        Integer nextChgSet = commitFiles.split(" ").length;
+        if(currMaxChgSet<nextChgSet){
+            methrics.get(index).set(10, nextChgSet.toString());   
+        }
+    }
+
+    public static void avgChgSet(List<List<String>> methrics){
+        Integer i;
+        Float denum;
+        Float num;
+        for(i=1; i<methrics.size();i++){
+            denum = Float.parseFloat(methrics.get(i).get(11));
+            num = Float.parseFloat(methrics.get(i).get(9));
+            if(denum == 0){
+                denum = 1f;
+                Float result = num/denum;
+                methrics.get(i).set(11, result.toString());
+            }
+            else{
+                Float result = num/denum;
+                methrics.get(i).set(11, result.toString());
+            }
+        }
+
     }
 
     public static void main(String[] args) throws IOException, CsvException, NumberFormatException{

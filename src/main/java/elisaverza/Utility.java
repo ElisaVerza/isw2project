@@ -30,7 +30,7 @@ import org.json.JSONObject;
 public class Utility {
 
     private static final String CSV_VERSIONS = "03-versionsdata.csv";
-    private static final String PRJ_NAME = "SYNCOPE";
+    private static final String PRJ_NAME = "BOOKKEEPER";
     private static final String USERNAME = "ElisaVerza";
     private static final String AUTH_CODE = "auth_code.txt";
     private static final String DATE_FORMAT = "yyyy-MM-dd";
@@ -199,8 +199,8 @@ public class Utility {
 
         if(toParse.contains(PRJ_NAME)){
             j = toParse.indexOf(PRJ_NAME);
-            j=j+8;
-            parsed.append("SYNCOPE-");
+            j=j+PRJ_NAME.length()+1;
+            parsed.append(PRJ_NAME+"-");
 
             while(toParse.length()>j){
                 if(toParse.length()>j && Character.isDigit(toParse.charAt(j))){
