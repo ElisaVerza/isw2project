@@ -4,8 +4,6 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
-
 import com.opencsv.CSVWriter;
 import com.opencsv.exceptions.CsvException;
 
@@ -37,10 +35,15 @@ public class Methrics {
                 currLocT = Integer.valueOf(methrics.get(j).get(2));
                 currLocT = currLocT+Integer.valueOf(added[k])+Integer.valueOf(deleted[k]);
                 Integer counter = Integer.valueOf(methrics.get(j).get(5))+1;
+                Integer counterChurn = Integer.valueOf(methrics.get(j).get(8))+1;
                 methrics.get(j).set(2, currLocT.toString());
                 methrics.get(j).set(5, counter.toString());
+                methrics.get(j).set(8, counterChurn.toString());
                 locAdded(methrics, added[k], j);
                 maxLocAdded(methrics, added[k], j);
+                churn(methrics, addedString, deletedString, j, k);
+                maxChurn(methrics, added, deleted, j, k);
+                chgSetSize(methrics, j);
             }
         }
     }
@@ -67,6 +70,9 @@ public class Methrics {
                 j++;
             }
         }
+
+        avgLocAdded(methrics);
+        avgChurn(methrics);
         try(CSVWriter csvWriter = new CSVWriter(new FileWriter(CSV_METHRICS));){
             List<String[]> collect = new ArrayList<>();
             for(i=0; i<methrics.size();i++){
@@ -90,8 +96,67 @@ public class Methrics {
         }
     }
 
-    public static void avgLocAdded(){
+    public static void avgLocAdded(List<List<String>> methrics){
+        Integer i;
+        Float denum;
+        Float num;
+        for(i=1; i<methrics.size();i++){
+            denum = Float.parseFloat(methrics.get(i).get(5));
+            num = Float.parseFloat(methrics.get(i).get(3));
+            if(denum == 0){
+                denum = 1f;
+                Float result = num/denum;
+                methrics.get(i).set(5, result.toString());
+            }
+            else{
+                Float result = num/denum;
+                methrics.get(i).set(5, result.toString());
+            }
+        }
+    }
 
+    public static void churn(List<List<String>> methrics, String addedString, String deletedString, Integer index, Integer k){
+        Integer currChurn;
+        String[] added = addedString.split(" ");
+        String[] deleted = deletedString.split(" ");
+
+        currChurn = Integer.valueOf(methrics.get(index).get(6));
+        currChurn = currChurn+Integer.valueOf(added[k])-Integer.valueOf(deleted[k]);
+        methrics.get(index).set(6, currChurn.toString());
+    }
+
+    public static void maxChurn(List<List<String>> methrics, String[] added, String[] deleted, Integer index, Integer k){
+        Integer currMaxChurn = Integer.valueOf(methrics.get(index).get(7));
+        Integer nextChurn = Integer.valueOf(added[k])-Integer.valueOf(deleted[k]);
+        if(currMaxChurn<nextChurn){
+            methrics.get(index).set(7, nextChurn.toString());   
+        }
+
+    }
+
+    public static void avgChurn(List<List<String>> methrics){
+        Integer i;
+        Float denum;
+        Float num;
+        for(i=1; i<methrics.size();i++){
+            denum = Float.parseFloat(methrics.get(i).get(8));
+            num = Float.parseFloat(methrics.get(i).get(6));
+            if(denum == 0){
+                denum = 1f;
+                Float result = num/denum;
+                methrics.get(i).set(8, result.toString());
+            }
+            else{
+                Float result = num/denum;
+                methrics.get(i).set(8, result.toString());
+            }
+        }
+
+    }
+
+    public static void chgSetSize(List<List<String>> methrics, Integer j){
+        String[] filesList = methrics.get(j).get(8).split(" ");
+        methrics.get(j).set(9, String.valueOf(filesList.length));
     }
 
     public static void main(String[] args) throws IOException, CsvException, NumberFormatException{
