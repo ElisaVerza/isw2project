@@ -12,7 +12,6 @@ public class Proportion {
     private Proportion() {
         throw new IllegalStateException("Proportion class");
     }
-    private static final String CSV_JIRA = "02-ticketdata.csv";
     private static final String CSV_VERSIONS = "03-versionsdata.csv";
 
     public static Integer indexCalc(List<List<String>> versions, String verToFind){
@@ -26,14 +25,14 @@ public class Proportion {
         return index;
     }
 
-    public static Float pCalc(int...index) throws IOException, CsvValidationException{
+    public static Float pCalc(String file, int...index) throws IOException, CsvValidationException{
         Integer i;
         Integer injIndex = 0;
         Integer openIndex = 0;
         Integer fixIndex = 0;
         List<Float> propArray = new ArrayList<>();
         String injected = " ";
-        List<List<String>> csv = Utility.csvToList(CSV_JIRA);
+        List<List<String>> csv = Utility.csvToList(file);
         Collections.reverse(csv);
         csv.remove(csv.size()-1);
         if(index.length == 0){

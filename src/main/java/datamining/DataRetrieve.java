@@ -37,7 +37,6 @@ public class DataRetrieve
     private static final boolean DOWNLOAD_COMMIT = false;
     private static final boolean DOWNLOAD_JIRA = true;
     private static final boolean DOWNLOAD_VERSIONS = false;
-    private static final boolean INCREMENTAL = true;
     private static final String DATE_FORMAT = "yyyy-MM-dd";
 
 
@@ -223,27 +222,21 @@ public class DataRetrieve
         return filesStr+","+addedStr+","+deletedStr;
     }
 
-    public static void labeling(Integer index) throws IOException, CsvException, ParseException{
+    public static void labeling(String file, boolean incremental) throws IOException, CsvException, ParseException{
         LOGGER.warning("Labeling in corso...");
 
         Integer j = 1;
-        Float p;
-        List<List<String>> csvS = Utility.csvToList(CSV_JIRA);
+        Float p = 0f;
+        List<List<String>> csvS = Utility.csvToList(file);
         Collections.reverse(csvS);
         csvS.remove(csvS.size()-1);
         List<List<String>> toCopy = new ArrayList<>(0);
 
         for(j=1; j<csvS.size(); j++) {  
             String values = csvS.get(j).get(3);
-            if(!INCREMENTAL){
-                p = Proportion.pCalc();
-            }
 
-            if(values.length()==1){
-                if(INCREMENTAL){
-                    p = Proportion.pCalc(j);
-                }
-                System.out.println(p);
+            if(values.length()==1 && incremental){
+                p = Proportion.pCalc(file, j);
                 String[] injVer = new String[] {Proportion.ivCalc(csvS.get(j).get(4),csvS.get(j).get(5), p)};
                 String[] fixVer = new String[] {csvS.get(j).get(4)};
 
@@ -264,7 +257,7 @@ public class DataRetrieve
                 toCopy.add(csvS.get(j));
             }
         }
-        File ticketFile = new File(CSV_JIRA);
+        File ticketFile = new File(file);
         try(FileWriter versionsWriter = new FileWriter(ticketFile)){
 
             versionsWriter.append("version,commit sha,jira_id,affected versions,fixed version,opening version,opening data,fixed data,commit file,added,deleted\n");
@@ -382,7 +375,7 @@ public class DataRetrieve
      * @throws JSONException
      * @throws CsvException
     */
-    public static void fileHandler(Integer index) throws IOException, InterruptedException, ParseException, JSONException, CsvException{
+    public static void fileHandler(String file, Boolean index) throws IOException, InterruptedException, ParseException, JSONException, CsvException{
         if(DOWNLOAD_VERSIONS){
             LOGGER.warning("Download elenco versioni in corso...");
 
@@ -412,10 +405,10 @@ public class DataRetrieve
                 jiraData(jiraWriter); 
             }
         }
-        labeling(index);
+        labeling(file, index);
     }
     public static void main(String[] args) throws IOException, JSONException, InterruptedException, ParseException, CsvException{
-        fileHandler(0);
+        fileHandler(CSV_JIRA, true);
     }
 
 }

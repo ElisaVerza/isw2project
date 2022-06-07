@@ -173,8 +173,8 @@ public class CsvCreator {
     }
 
 
-    public static void data(Integer index) throws IOException, InterruptedException, JSONException, ParseException, CsvException{
-        DataRetrieve.fileHandler(index);
+    public static void data(String file, boolean index) throws IOException, InterruptedException, JSONException, ParseException, CsvException{
+        DataRetrieve.fileHandler(file, index);
         if(DOWNLOAD_DATA){
             bugginess();
         }
