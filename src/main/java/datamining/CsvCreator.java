@@ -32,8 +32,8 @@ public class CsvCreator {
     private static final String CSV_JIRA = "02-ticketdata.csv";
     private static final String CSV_VERSIONS = "03-versionsdata.csv";
     private static final String CSV_METHRICS = "04-data.csv";
-    public static final boolean DOWNLOAD_DATA = true;
-    public static final boolean DOWNLOAD_FILES = true;
+    public static final boolean DOWNLOAD_DATA = false;
+    public static final boolean DOWNLOAD_FILES = false;
 
 
     public static void downloadFiles() throws IOException, ParseException{
@@ -173,8 +173,8 @@ public class CsvCreator {
     }
 
 
-    public static void data(String file, boolean index) throws IOException, InterruptedException, JSONException, ParseException, CsvException{
-        DataRetrieve.fileHandler(file, index);
+    public static void data(String file, boolean incremental) throws IOException, InterruptedException, JSONException, ParseException, CsvException{
+        DataRetrieve.fileHandler(file, incremental);
         if(DOWNLOAD_DATA){
             bugginess();
         }

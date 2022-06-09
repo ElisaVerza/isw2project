@@ -35,7 +35,7 @@ public class DataRetrieve
     private static final String CSV_VERSIONS = "03-versionsdata.csv";
     private static final String PRJ_NAME = "SYNCOPE";
     private static final boolean DOWNLOAD_COMMIT = false;
-    private static final boolean DOWNLOAD_JIRA = true;
+    private static final boolean DOWNLOAD_JIRA = false;
     private static final boolean DOWNLOAD_VERSIONS = false;
     private static final String DATE_FORMAT = "yyyy-MM-dd";
 
@@ -375,7 +375,7 @@ public class DataRetrieve
      * @throws JSONException
      * @throws CsvException
     */
-    public static void fileHandler(String file, Boolean index) throws IOException, InterruptedException, ParseException, JSONException, CsvException{
+    public static void fileHandler(String file, Boolean incremental) throws IOException, InterruptedException, ParseException, JSONException, CsvException{
         if(DOWNLOAD_VERSIONS){
             LOGGER.warning("Download elenco versioni in corso...");
 
@@ -405,7 +405,9 @@ public class DataRetrieve
                 jiraData(jiraWriter); 
             }
         }
-        labeling(file, index);
+        if(DOWNLOAD_JIRA){
+            labeling(file, incremental);
+        }
     }
     public static void main(String[] args) throws IOException, JSONException, InterruptedException, ParseException, CsvException{
         fileHandler(CSV_JIRA, true);
