@@ -23,7 +23,7 @@ public class Methrics {
         }
     }
 
-    public static void methricsWriter(String filesString, String addedString, String deletedString, List<List<String>> methrics, Integer j) throws IOException, CsvException{
+    public static void methricsWriter(String filesString, String addedString, String deletedString, List<List<String>> methrics, Integer j){
         Integer k;
         Integer currLocT;
         String[] files = filesString.split(" ");

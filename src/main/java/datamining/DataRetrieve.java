@@ -313,7 +313,7 @@ public class DataRetrieve
     * @return void
      * @throws ParseException
     */
-    public static void commitData(FileWriter commitWriter) throws IOException, InterruptedException, ParseException{
+    public static void commitData(FileWriter commitWriter) throws IOException, InterruptedException{
         Integer i = 1; 
         Integer l = 0;
         Integer k;

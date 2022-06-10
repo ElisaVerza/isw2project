@@ -244,25 +244,19 @@ public class Utility {
      * @return resultRow array di stringhe contenente le righe che contengono searchString
      */
     public static String[] searchCsvLine(int searchColumnIndex, String searchString, String file) throws IOException {
-        String[] resultRow = new String[0];
-        Integer i = 0;
+        List<String> resultRow = new ArrayList<>();
         try(BufferedReader br = new BufferedReader(new FileReader(file))){
             String line;
             while ( (line = br.readLine()) != null ) {
                 String[] values = line.split(",");
 
                 if(values.length > searchColumnIndex && values[searchColumnIndex].equals(searchString)) {
-                    String[] newArray = new String[resultRow.length + 1];
-                    System.arraycopy(resultRow, 0, newArray, 0, resultRow.length);
-
-                    resultRow = newArray;
-                    resultRow[i] = line;
-                    i++;
+                    resultRow.add(line);
                 }
             }
         }
 
-        return resultRow;
+        return resultRow.toArray(new String[resultRow.size()]);
     }
 
     public static List<List<String>> csvToList(String csvFile) throws IOException, CsvValidationException{

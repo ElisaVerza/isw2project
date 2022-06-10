@@ -5,8 +5,11 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import org.javatuples.Pair;
+import org.netlib.util.booleanW;
 
 import com.opencsv.exceptions.CsvValidationException;
 
@@ -17,62 +20,121 @@ import weka.core.Instances;
 
 import weka.classifiers.Evaluation;
 import weka.classifiers.bayes.NaiveBayes;
+import weka.classifiers.lazy.IBk;
+import weka.classifiers.trees.RandomForest;
 import weka.core.converters.ConverterUtils.DataSource;
 
 public class WalkForward {
+
+    private static final Logger LOGGER = Logger.getLogger(WalkForward.class.getName());
     
     private static final String CSV_JIRA = "02-ticketdata.csv";
-    private static final String CSV_VERSIONS = "03-versionsdata.csv";
     private static final String CSV_METHRICS = "04-data.csv";
     private static final String CSV_TRAINING = "training.csv";
     private static final String CSV_TESTING = "testing.csv";
+    private static final String CSV_FINAL = "finalresult.csv";
     private static final String ARFF_TRAINING = "training.arff";
     private static final String ARFF_TESTING = "testing.arff";
+    private static final String PRJ_NAME = "Syncope";
 
     public static  List<Pair<List<String>, String>> versionSplit() throws CsvValidationException, IOException{
-        List<List<String>> versions = Utility.csvToList(CSV_VERSIONS);
-        Integer i;
         Integer j;
+        Integer i;
+        List<String> versions = new ArrayList<>();
+        List<List<String>> files = Utility.csvToList(CSV_METHRICS);
         List<Pair<List<String>, String>> iteration = new ArrayList<>();
+
+        for(j=0; j<files.size(); j++){
+            if(!versions.contains(files.get(j).get(0))){
+                versions.add(files.get(j).get(0));
+            }
+        }
+
         for(i=2; i<versions.size(); i++){
-            String testing = versions.get(i).get(0);
+            String testing = versions.get(i);
             List<String> training = new ArrayList<>();
             for(j=1; j<i; j++){
-                training.add(versions.get(j).get(0));
+                training.add(versions.get(j));
             } 
             iteration.add(new Pair<>(training, testing));
         }
-
         return iteration;
     }
 
-    public static List<List<Object>> filesFromVersion(String version) throws CsvValidationException, IOException{
+    public static List<String> filesFromVersion(String version) throws CsvValidationException, IOException{
         Integer i=0;
         Integer j;
-        List<List<Object>> csvLines = new ArrayList<>();
+        List<String> csvLines = new ArrayList<>();
         List<List<String>> files = Utility.csvToList(CSV_METHRICS);
 
         while(i<files.size() && !files.get(i).get(0).equals(version)){
             i++;
         }
         while(i<files.size() && files.get(i).get(0).equals(version)){
-            List<Object> line = new ArrayList<>();
-            for(j=2; j<files.get(i).size()-1; j++){
-                line.add(Float.valueOf(files.get(i).get(j)));
+            StringBuilder line = new StringBuilder();
+            for(j=2; j<files.get(i).size(); j++){
+                line.append(files.get(i).get(j));
+                if(j!=files.get(i).size()-1){
+                    line.append(",");
+                }
             }
-            line.add(files.get(i).get(files.get(i).size()-1));
-
+            csvLines.add(line.toString());
             i++;
-            csvLines.add(line);
         }
         return csvLines;
     }
 
-    public static void wekaApi() throws Exception{
+    public static Evaluation classifier(Instances training, Instances testing, int classifierIndex) throws Exception{
+        Evaluation eval = new Evaluation(null);
+        switch (classifierIndex) {
+            case 1:
+                NaiveBayes classifierNB = new NaiveBayes();
+                classifierNB.buildClassifier(training);
+                eval = new Evaluation(testing);	
+                eval.evaluateModel(classifierNB, testing); 
+                break;
+            case 2:
+                RandomForest classifierRF = new RandomForest();
+                classifierRF.buildClassifier(training);
+                eval = new Evaluation(testing);	
+                eval.evaluateModel(classifierRF, testing); 
+                break;
+            case 3:
+                RandomForest classifierIBK = new RandomForest();
+                classifierIBK.buildClassifier(training);
+                eval = new Evaluation(testing);	
+                eval.evaluateModel(classifierIBK, testing); 
+                break;
+            default:
+                break;
+        }
+        
+        return eval;
+    }
+
+    public static void wekaApi(int iteration, int classifierIndex) throws Exception{
+        File results = new File(CSV_FINAL);
+        String classifier = "";
+        switch (classifierIndex) {
+            case 1:
+                classifier = "NaiveBayes";
+                break;
+            case 2:
+                classifier = "RandomForest";
+                break;
+            case 3:
+                classifier = "iBk";
+                break;
+
+        
+            default:
+                break;
+        }
+
         Utility.csvToArff(CSV_TRAINING, ARFF_TRAINING);
         Utility.csvToArff(CSV_TESTING, ARFF_TESTING);
         
-        /*DataSource source1 = new DataSource(ARFF_TRAINING);
+        DataSource source1 = new DataSource(ARFF_TRAINING);
         Instances training = source1.getDataSet();
 
         DataSource source2 = new DataSource(ARFF_TESTING);
@@ -82,20 +144,19 @@ public class WalkForward {
         training.setClassIndex(numAttr - 1);
         testing.setClassIndex(numAttr - 1);
 
-        NaiveBayes classifier = new NaiveBayes();
+        Evaluation eval = classifier(training, testing, 1);
+        try(FileWriter finalResults = new FileWriter(results)){
+            //TODO: aggiungere precision recall auc kappa
+            finalResults.append("project,release,classifier,precision,recall,AUC,kappa\n");
+            finalResults.append(PRJ_NAME+","+iteration+classifier);
+        }
 
-        classifier.buildClassifier(training);
 
-        Evaluation eval = new Evaluation(testing);	
-
-        eval.evaluateModel(classifier, testing); 
-        
-        System.out.println("AUC = "+eval.areaUnderROC(1));
-        System.out.println("kappa = "+eval.kappa());
-        System.out.println("precision = "+eval.precision(1));
-        System.out.println("recall = "+eval.recall(1));*/
-    
-        
+        System.out.println("AUC = "+ eval.areaUnderROC(1));
+        System.out.println("kappa = "+ eval.kappa());
+        System.out.println( "precision = "+ eval.precision(1));
+        System.out.println("recall = "+ eval.recall(1));
+        System.out.println(eval.errorRate());
 	}
 
 
@@ -115,26 +176,28 @@ public class WalkForward {
                 FileWriter testingWriter = new FileWriter(testingFile);){
                 trainingWriter.append("LOCTouched,LOCadded,MaxLOCadded,AvgLOCadded,churn,MaxChurn,AvgChurn,ChgSetSize,MaxChgSet,AvgChgSet,Bugginess\n");
                 for(j=0;  j<training.size(); j++){
-                    List<List<Object>> csvTraining = filesFromVersion(training.get(j));
+                    List<String> csvTraining = filesFromVersion(training.get(i));
                     for(k=0;k<csvTraining.size();k++){
-                        //String line = csvTraining.get(k).replace("[","");
-                        //line = line.replace("]","");
-                        //line = line.replace(" ","");
-                        trainingWriter.append(csvTraining.get(k) +"\n");
+                        String line = csvTraining.get(k);
+                        line = csvTraining.get(k).replace("[","");
+                        line = line.replace("]","");
+                        line = line.replace(" ","");
+                        trainingWriter.append(line+"\n");
                         trainingWriter.flush();
                     }
                 }
                 testingWriter.append("LOCTouched,LOCadded,MaxLOCadded,AvgLOCadded,churn,MaxChurn,AvgChurn,ChgSetSize,MaxChgSet,AvgChgSet,Bugginess\n");
-                List<List<Object>> csvTesting = filesFromVersion(testing);
+                List<String> csvTesting = filesFromVersion(testing);
                 for(k=0; k<csvTesting.size(); k++){
-                    //String line = csvTesting.get(k).replace("[","");
-                    //line = line.replace("]","");
-                    //line = line.replace(" ","");
-                    testingWriter.append(csvTesting.get(k)+"\n");
+                    String line = csvTesting.get(k).replace("[","");
+                    line = line.replace("]","");
+                    line = line.replace(" ","");
+                    testingWriter.append(line+"\n");
                     testingWriter.flush();
                 }
-            }
-            wekaApi();
+                System.out.println(csvTesting.size());
+            }   
+            wekaApi(i, 1);
         }
     }
 
