@@ -63,7 +63,7 @@ public class Methrics {
 
         for(i=1; i<commit.size(); i++){
             j=1;
-            while(!commit.get(i).get(0).equals(methrics.get(j).get(0))){
+            while(j<methrics.size() && !commit.get(i).get(0).equals(methrics.get(j).get(0))){
                 j++;
             }
             while(j<methrics.size() && commit.get(i).get(0).equals(methrics.get(j).get(0))){

@@ -8,13 +8,16 @@ import java.io.IOException;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
 
 import com.opencsv.CSVReader;
 import com.opencsv.CSVWriter;
 import com.opencsv.exceptions.CsvException;
+import com.opencsv.exceptions.CsvValidationException;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -36,42 +39,51 @@ public class CsvCreator {
     public static final boolean DOWNLOAD_FILES = false;
 
 
-    public static void downloadFiles() throws IOException, ParseException{
-        LOGGER.warning("Download file per release in corso...");
-
-        Integer k;
-        Integer i = 0;
-        try(BufferedReader brVd = new BufferedReader(new FileReader(CSV_VERSIONS))){
-            String lineVd = brVd.readLine();
-            String [] commitSha = new String[0];
-            try(FileWriter csvWriter = new FileWriter(CSV_METHRICS)){
-                csvWriter.append("versione,file,LOC Touched,LOC added,Max LOC added,Avg LOC added,Churn,Max churn,Avg churn,Change set size,Max change set,Avg change set\n");
-
-                while((lineVd = brVd.readLine()) != null ) {
-                    String[] valuesVd = lineVd.split(",");
-                    String[] newArray = new String[commitSha.length + 1];
-                    System.arraycopy(commitSha, 0, newArray, 0, commitSha.length);
-                    commitSha = newArray;
-
-                    commitSha[i] = dateSearch(valuesVd[1]);
-                    LOGGER.warning(valuesVd[0]);
-
-                    if(!commitSha[i].equals(" ")){
-                        String filesUrl = "https://api.github.com/repos/apache/"+PRJ_NAME+"/git/trees/"+commitSha[i]+"?recursive=1";
-                        JSONObject filesJsonObj = Utility.readJsonObjFromUrl(filesUrl, true);
-                        JSONArray jsonFiles = new JSONArray(filesJsonObj.getJSONArray("tree"));
-
-                        for(k = 0; k<jsonFiles.length(); k++){
-                            if(jsonFiles.getJSONObject(k).getString("path").contains(".java")){
-                                csvWriter.append(valuesVd[0]+","+jsonFiles.getJSONObject(k).getString("path")+",0,0,0,0,0,0,0,0,0,0,"+"No\n");
-                            }
-                        }
-                    }
-                }
-                i++;
+    public static void filesRetrieve(Integer j, List<List<String>> ticket, List<String> files) throws JSONException, IOException{
+        Integer i;
+        String filesUrl = "https://api.github.com/repos/apache/"+PRJ_NAME+"/git/trees/"+ticket.get(j).get(1)+"?recursive=1";
+        JSONObject filesJsonObj = Utility.readJsonObjFromUrl(filesUrl, true);
+        JSONArray jsonFiles = new JSONArray(filesJsonObj.getJSONArray("tree"));
+        for(i = 0; i<jsonFiles.length(); i++){
+            if(jsonFiles.getJSONObject(i).getString("path").contains(".java")){
+                files.add(jsonFiles.getJSONObject(i).getString("path"));
             }
         }
 
+    }
+
+    public static void downloadFiles() throws IOException, CsvValidationException, ParseException{
+        LOGGER.warning("Download file per release in corso...");
+        Integer z;
+        Integer i;
+        List<List<String>> versions = Utility.csvToList(CSV_VERSIONS);
+        List<List<String>> ticket = new ArrayList<>();
+        List<List<String>> rawTicket = Utility.csvToList(CSV_COMMIT);
+        for(i=1; i<rawTicket.size(); i++){
+            String version = Utility.getVersionByDate(rawTicket.get(i).get(0));
+            List<String> line = Arrays.asList(version, rawTicket.get(i).get(1), rawTicket.get(i).get(2));
+            ticket.add(line);
+        }
+        Integer len = versions.size()/2;
+        try(FileWriter csvWriter = new FileWriter(CSV_METHRICS)){
+            csvWriter.append("versione,file,LOC Touched,LOC added,Max LOC added,Avg LOC added,Churn,Max churn,Avg churn,Change set size,Max change set,Avg change set\n");
+            for(z=1; z<len+1; z++){
+                Integer j = 0;
+                List<String> files = new ArrayList<>();
+                LOGGER.warning(versions.get(z).get(0));
+                while(j<ticket.size() && !ticket.get(j).get(0).equals(versions.get(z).get(0))){
+                    j++;
+                }
+                while(j<ticket.size() && ticket.get(j).get(0).equals(versions.get(z).get(0))){
+                    filesRetrieve(j, ticket, files);
+                    j++;
+                }
+                List<String> toCpoy = files.stream().distinct().collect(Collectors.toList());
+                for(i=0; i<toCpoy.size(); i++){
+                    csvWriter.append(versions.get(z).get(0)+","+toCpoy.get(i)+",0,0,0,0,0,0,0,0,0,0,"+"No\n");
+                }
+            }
+        }
     }
 
     public static void searchBugginess(String affectedVersion, String commitFiles) throws IOException, CsvException{
@@ -97,18 +109,21 @@ public class CsvCreator {
      * come buggy tutti i file toccati dal commit risolutivo del ticket.
      * 
      * @return void
+     * @throws ParseException
      * @throws InterruptedException
      */
-    public static void bugginess() throws IOException, JSONException, ParseException, CsvException{
+    public static void bugginess() throws IOException, JSONException, CsvException, ParseException{
         Integer z;
         if(DOWNLOAD_FILES){
             downloadFiles();
         }
+        LOGGER.warning("Matching ticket in corso...");
 
         try(BufferedReader brTd = new BufferedReader(new FileReader(CSV_JIRA))){
             String lineTd = brTd.readLine();
             while ( (lineTd = brTd.readLine()) != null ) {
                 String[] ticketValues = lineTd.split(",");
+                LOGGER.warning(ticketValues[0]);
 
                 String valuesPure = ticketValues[3].replace("[", "");
                 valuesPure = valuesPure.replace("]", "");
@@ -120,7 +135,8 @@ public class CsvCreator {
                             searchBugginess(ticketAffectedVer[z], ticketValues[8]);
                         } 
                     }
-                    }
+                
+            }
         }  
     }
     
@@ -180,4 +196,9 @@ public class CsvCreator {
         }
         Methrics.locTouched();
     }
+
+    public static void main(String[] args) throws IOException, JSONException, InterruptedException, ParseException, CsvException{
+        data(CSV_JIRA, true);
+    }
+
 }

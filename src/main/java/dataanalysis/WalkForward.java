@@ -18,16 +18,16 @@ import weka.core.Instances;
 import weka.classifiers.Evaluation;
 import weka.classifiers.bayes.NaiveBayes;
 import weka.core.converters.ConverterUtils.DataSource;
-import weka.filters.Filter;
-import weka.filters.unsupervised.attribute.StringToNominal;
 
 public class WalkForward {
     
     private static final String CSV_JIRA = "02-ticketdata.csv";
     private static final String CSV_VERSIONS = "03-versionsdata.csv";
     private static final String CSV_METHRICS = "04-data.csv";
-    private static final String CSV_TRAINING = "training.arff";
-    private static final String CSV_TESTING = "testing.arff";
+    private static final String CSV_TRAINING = "training.csv";
+    private static final String CSV_TESTING = "testing.csv";
+    private static final String ARFF_TRAINING = "training.arff";
+    private static final String ARFF_TESTING = "testing.arff";
 
     public static  List<Pair<List<String>, String>> versionSplit() throws CsvValidationException, IOException{
         List<List<String>> versions = Utility.csvToList(CSV_VERSIONS);
@@ -46,32 +46,36 @@ public class WalkForward {
         return iteration;
     }
 
-    public static List<String> filesFromVersion(String version) throws CsvValidationException, IOException{
+    public static List<List<Object>> filesFromVersion(String version) throws CsvValidationException, IOException{
         Integer i=0;
         Integer j;
-        List<String> csvLines = new ArrayList<>();
+        List<List<Object>> csvLines = new ArrayList<>();
         List<List<String>> files = Utility.csvToList(CSV_METHRICS);
 
-        while(!files.get(i).get(0).equals(version)){
+        while(i<files.size() && !files.get(i).get(0).equals(version)){
             i++;
         }
         while(i<files.size() && files.get(i).get(0).equals(version)){
-            StringBuilder line = new StringBuilder();
-            for(j=2; j<files.get(i).size(); j++){
-                line.append(files.get(i).get(j));
-                line.append(",");
+            List<Object> line = new ArrayList<>();
+            for(j=2; j<files.get(i).size()-1; j++){
+                line.add(Float.valueOf(files.get(i).get(j)));
             }
-            csvLines.add(line.toString());
+            line.add(files.get(i).get(files.get(i).size()-1));
+
             i++;
+            csvLines.add(line);
         }
         return csvLines;
     }
 
     public static void wekaApi() throws Exception{
-        DataSource source1 = new DataSource(CSV_TRAINING);
+        Utility.csvToArff(CSV_TRAINING, ARFF_TRAINING);
+        Utility.csvToArff(CSV_TESTING, ARFF_TESTING);
+        
+        /*DataSource source1 = new DataSource(ARFF_TRAINING);
         Instances training = source1.getDataSet();
 
-        DataSource source2 = new DataSource(CSV_TESTING);
+        DataSource source2 = new DataSource(ARFF_TESTING);
         Instances testing = source2.getDataSet();
 
         int numAttr = training.numAttributes();
@@ -88,6 +92,8 @@ public class WalkForward {
         
         System.out.println("AUC = "+eval.areaUnderROC(1));
         System.out.println("kappa = "+eval.kappa());
+        System.out.println("precision = "+eval.precision(1));
+        System.out.println("recall = "+eval.recall(1));*/
     
         
 	}
@@ -107,30 +113,24 @@ public class WalkForward {
             String testing = trainingTesting.get(i).getValue1();
             try(FileWriter trainingWriter = new FileWriter(trainingFile);
                 FileWriter testingWriter = new FileWriter(testingFile);){
-                trainingWriter.append("@RELATION wekadata\n@ATTRIBUTE LOCTouched  NUMERIC\n@ATTRIBUTE LOCadded  NUMERIC\n@ATTRIBUTE MaxLOCadded  NUMERIC"+
-                                      "\n@ATTRIBUTE AvgLOCadded  NUMERIC\n@ATTRIBUTE churn  NUMERIC\n@ATTRIBUTE MaxChurn  NUMERIC"+
-                                      "\n@ATTRIBUTE AvgChurn  NUMERIC\n@ATTRIBUTE ChgSetSize  NUMERIC\n@ATTRIBUTE MaxChgSet  NUMERIC"+
-                                      "\n@ATTRIBUTE AvgChgSet  NUMERIC\n@ATTRIBUTE Bugginess  {No, YES}\n@DATA\n");
+                trainingWriter.append("LOCTouched,LOCadded,MaxLOCadded,AvgLOCadded,churn,MaxChurn,AvgChurn,ChgSetSize,MaxChgSet,AvgChgSet,Bugginess\n");
                 for(j=0;  j<training.size(); j++){
-                    List<String> csvTraining = filesFromVersion(training.get(j));
+                    List<List<Object>> csvTraining = filesFromVersion(training.get(j));
                     for(k=0;k<csvTraining.size();k++){
-                        String line = csvTraining.get(k).replace("[","");
-                        line = line.replace("]","");
-                        line = line.replace(" ","");
-                        trainingWriter.append(line +"\n");
+                        //String line = csvTraining.get(k).replace("[","");
+                        //line = line.replace("]","");
+                        //line = line.replace(" ","");
+                        trainingWriter.append(csvTraining.get(k) +"\n");
                         trainingWriter.flush();
                     }
                 }
-                testingWriter.append("@RELATION wekadata\n@ATTRIBUTE LOCTouched  NUMERIC\n@ATTRIBUTE LOCadded  NUMERIC\n@ATTRIBUTE MaxLOCadded  NUMERIC"+
-                                    "\n@ATTRIBUTE AvgLOCadded  NUMERIC\n@ATTRIBUTE churn  NUMERIC\n@ATTRIBUTE MaxChurn  NUMERIC"+
-                                    "\n@ATTRIBUTE AvgChurn  NUMERIC\n@ATTRIBUTE ChgSetSize  NUMERIC\n@ATTRIBUTE MaxChgSet  NUMERIC"+
-                                    "\n@ATTRIBUTE AvgChgSet  NUMERIC\n@ATTRIBUTE Bugginess  {No, YES}\n@DATA\n");
-                List<String> csvTesting = filesFromVersion(testing);
+                testingWriter.append("LOCTouched,LOCadded,MaxLOCadded,AvgLOCadded,churn,MaxChurn,AvgChurn,ChgSetSize,MaxChgSet,AvgChgSet,Bugginess\n");
+                List<List<Object>> csvTesting = filesFromVersion(testing);
                 for(k=0; k<csvTesting.size(); k++){
-                    String line = csvTesting.get(k).replace("[","");
-                    line = line.replace("]","");
-                    line = line.replace(" ","");
-                    testingWriter.append(line+"\n");
+                    //String line = csvTesting.get(k).replace("[","");
+                    //line = line.replace("]","");
+                    //line = line.replace(" ","");
+                    testingWriter.append(csvTesting.get(k)+"\n");
                     testingWriter.flush();
                 }
             }

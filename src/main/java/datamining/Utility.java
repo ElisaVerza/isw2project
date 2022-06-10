@@ -23,6 +23,10 @@ import java.util.TreeMap;
 import com.opencsv.CSVReader;
 import com.opencsv.exceptions.CsvValidationException;
 
+import weka.core.Instances;
+import weka.core.converters.ArffSaver;
+import weka.core.converters.CSVLoader;
+
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -34,6 +38,7 @@ public class Utility {
     private static final String USERNAME = "ElisaVerza";
     private static final String AUTH_CODE = "auth_code.txt";
     private static final String DATE_FORMAT = "yyyy-MM-dd";
+
 
 //Salta
     public static Date getLastRelease() throws IOException, ParseException{
@@ -50,12 +55,15 @@ public class Utility {
 //Salta
     public static void sortVersions() throws IOException{
         Integer i;
+        Integer j = 0;
         Map<String, String> versionMap = new HashMap<>();
         try(BufferedReader br = new BufferedReader(new FileReader(CSV_VERSIONS))){
             String line = br.readLine();
             while ( (line = br.readLine()) != null ) {
                 String[] values = line.split(",");
-                versionMap.put(values[1], values[0]);
+
+                versionMap.put(values[1]+" "+j, values[0]);
+                j++;
             }
         }
         Map<String, String> sortedMap = new TreeMap<>(versionMap);
@@ -69,7 +77,18 @@ public class Utility {
             }
         }
     }
-//Salta
+
+    public static boolean validTicketVersion(String[] ticketValues) throws CsvValidationException, IOException{
+        List<List<String>> versions = csvToList(CSV_VERSIONS);
+        Integer i;
+        for(i=1; i<versions.size()/2; i++){
+            if(ticketValues[5].equals(versions.get(i).get(0))){
+                return true;
+            }
+        }
+        
+        return false;
+    }
 
     public static String getVersionByDate(String date) throws IOException, ParseException{
         Date openingToDate = new SimpleDateFormat(DATE_FORMAT).parse(date);
@@ -255,6 +274,16 @@ public class Utility {
             }
         }  
       return records;
+    }
+
+    public static void csvToArff(String csvFile, String arffFile) throws IOException{
+        CSVLoader loader = new CSVLoader();
+        loader.setSource(new File(csvFile));
+        Instances data = loader.getDataSet();
+        ArffSaver saver = new ArffSaver();
+        saver.setInstances(data);
+        saver.setFile(new File(arffFile));
+        saver.writeBatch();        
     }
 
     public static void main(String[] args){

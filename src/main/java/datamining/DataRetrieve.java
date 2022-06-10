@@ -5,7 +5,6 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -321,7 +320,6 @@ public class DataRetrieve
         String date;
         String sha;
         String jiraId;
-        Date lastRelease = Utility.getLastRelease();
         do{
             String url = "https://api.github.com/repos/apache/"+PRJ_NAME+"/commits?page="+i.toString()+"&per_page=100";
             JSONArray jPage = new JSONArray(Utility.readJsonArrayFromUrl(url, true));
@@ -330,8 +328,7 @@ public class DataRetrieve
             for(k=0; k<l; k++){
                 jiraId = Utility.parseId(jPage.getJSONObject(k).getJSONObject("commit").getString("message"));
                 date = jPage.getJSONObject(k).getJSONObject("commit").getJSONObject("committer").getString("date");
-                Date commitDate = Date.from(Instant.parse(date));
-                if(jiraId.contains(PRJ_NAME) && lastRelease.compareTo(commitDate)>=0){
+                if(jiraId.contains(PRJ_NAME)){
                     sha = jPage.getJSONObject(k).getString("sha");
                     commitWriter.append(date + "," +sha+","+ jiraId +"\n");
                 }
@@ -352,7 +349,7 @@ public class DataRetrieve
         Integer i;
         JSONObject jsonObj = Utility.readJsonObjFromUrl(url, false);
         JSONArray json = new JSONArray(jsonObj.getJSONArray("versions"));
-        len = json.length()/2;
+        len = json.length();
         for(i = 0; i<len; i++){
             if(json.getJSONObject(i).getBoolean("released")){
                 versionsWriter.append(json.getJSONObject(i).getString("name")+","+
