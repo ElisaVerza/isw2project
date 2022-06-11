@@ -85,7 +85,7 @@ public class WalkForward {
     }
 
     public static Evaluation classifier(Instances training, Instances testing, int classifierIndex) throws Exception{
-        Evaluation eval = new Evaluation(null);
+        Evaluation eval;
         switch (classifierIndex) {
             case 1:
                 NaiveBayes classifierNB = new NaiveBayes();
@@ -106,6 +106,7 @@ public class WalkForward {
                 eval.evaluateModel(classifierIBK, testing); 
                 break;
             default:
+                eval = new Evaluation(null);
                 break;
         }
         
@@ -130,7 +131,8 @@ public class WalkForward {
             default:
                 break;
         }
-
+        
+        //Costruzione classificatore
         Utility.csvToArff(CSV_TRAINING, ARFF_TRAINING);
         Utility.csvToArff(CSV_TESTING, ARFF_TESTING);
         
@@ -144,19 +146,19 @@ public class WalkForward {
         training.setClassIndex(numAttr - 1);
         testing.setClassIndex(numAttr - 1);
 
+        //Calcolo % of training
+        List<List<String>> trainingFile = Utility.csvToList(CSV_TRAINING);
+        List<List<String>> dataFile = Utility.csvToList(CSV_METHRICS);
+        float trainingPerc = (trainingFile.size()/(float)dataFile.size())*100f;
+        System.out.println(trainingPerc);
+
         Evaluation eval = classifier(training, testing, 1);
-        try(FileWriter finalResults = new FileWriter(results)){
-            //TODO: aggiungere precision recall auc kappa
-            finalResults.append("project,release,classifier,precision,recall,AUC,kappa\n");
-            finalResults.append(PRJ_NAME+","+iteration+classifier);
+        try(FileWriter finalResults = new FileWriter(results, true)){
+            if(iteration==1){finalResults.append("project,release,classifier,precision,recall,AUC,kappa\n");}
+
+            finalResults.append(PRJ_NAME+","+iteration+","+classifier+","+eval.areaUnderROC(1)+","+eval.kappa()+","+
+                                eval.precision(1)+","+eval.recall(1));
         }
-
-
-        System.out.println("AUC = "+ eval.areaUnderROC(1));
-        System.out.println("kappa = "+ eval.kappa());
-        System.out.println( "precision = "+ eval.precision(1));
-        System.out.println("recall = "+ eval.recall(1));
-        System.out.println(eval.errorRate());
 	}
 
 
@@ -176,7 +178,7 @@ public class WalkForward {
                 FileWriter testingWriter = new FileWriter(testingFile);){
                 trainingWriter.append("LOCTouched,LOCadded,MaxLOCadded,AvgLOCadded,churn,MaxChurn,AvgChurn,ChgSetSize,MaxChgSet,AvgChgSet,Bugginess\n");
                 for(j=0;  j<training.size(); j++){
-                    List<String> csvTraining = filesFromVersion(training.get(i));
+                    List<String> csvTraining = filesFromVersion(training.get(j));
                     for(k=0;k<csvTraining.size();k++){
                         String line = csvTraining.get(k);
                         line = csvTraining.get(k).replace("[","");
@@ -195,7 +197,6 @@ public class WalkForward {
                     testingWriter.append(line+"\n");
                     testingWriter.flush();
                 }
-                System.out.println(csvTesting.size());
             }   
             wekaApi(i, 1);
         }

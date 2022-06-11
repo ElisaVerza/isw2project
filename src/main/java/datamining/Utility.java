@@ -1,6 +1,7 @@
 package datamining;
 
 import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
@@ -274,10 +275,11 @@ public class Utility {
         CSVLoader loader = new CSVLoader();
         loader.setSource(new File(csvFile));
         Instances data = loader.getDataSet();
-        ArffSaver saver = new ArffSaver();
-        saver.setInstances(data);
-        saver.setFile(new File(arffFile));
-        saver.writeBatch();        
+
+        try(BufferedWriter writer = new BufferedWriter(new FileWriter(arffFile))){
+            writer.write(data.toString());
+            writer.flush();
+        }
     }
 
     public static void main(String[] args){
