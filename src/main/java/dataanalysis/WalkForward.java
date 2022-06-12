@@ -4,12 +4,12 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import org.javatuples.Pair;
-import org.netlib.util.booleanW;
 
 import com.opencsv.exceptions.CsvValidationException;
 
@@ -22,7 +22,12 @@ import weka.classifiers.Evaluation;
 import weka.classifiers.bayes.NaiveBayes;
 import weka.classifiers.lazy.IBk;
 import weka.classifiers.trees.RandomForest;
+import weka.core.converters.ArffSaver;
 import weka.core.converters.ConverterUtils.DataSource;
+import weka.attributeSelection.CfsSubsetEval;
+import weka.attributeSelection.GreedyStepwise;
+import weka.filters.Filter;
+import weka.filters.supervised.attribute.AttributeSelection;
 
 public class WalkForward {
 
@@ -36,6 +41,8 @@ public class WalkForward {
     private static final String ARFF_TRAINING = "training.arff";
     private static final String ARFF_TESTING = "testing.arff";
     private static final String PRJ_NAME = "Syncope";
+    
+    private static final boolean FS = true;
 
     public static  List<Pair<List<String>, String>> versionSplit() throws CsvValidationException, IOException{
         Integer j;
@@ -59,6 +66,28 @@ public class WalkForward {
             iteration.add(new Pair<>(training, testing));
         }
         return iteration;
+    }
+
+    public static List<Float> defectiveness() throws CsvValidationException, IOException{
+        List<List<String>> training = Utility.csvToList(CSV_TRAINING);
+        List<List<String>> testing = Utility.csvToList(CSV_TESTING);
+        Integer columnNum = training.get(0).size()-1;
+        Integer i;
+        List<Float> defectiveNum = Arrays.asList(0f, 0f);
+
+        for(i=0; i<training.size(); i++){
+            if(training.get(i).get(columnNum).equals("YES")){
+                defectiveNum.set(0, defectiveNum.get(0)+1);
+            }  
+        }
+
+        for(i=0; i<testing.size(); i++){
+            if(testing.get(i).get(columnNum).equals("YES")){
+                defectiveNum.set(1, defectiveNum.get(1)+1);
+            }  
+        }
+
+        return defectiveNum;
     }
 
     public static List<String> filesFromVersion(String version) throws CsvValidationException, IOException{
@@ -100,7 +129,7 @@ public class WalkForward {
                 eval.evaluateModel(classifierRF, testing); 
                 break;
             case 3:
-                RandomForest classifierIBK = new RandomForest();
+                IBk classifierIBK = new IBk();
                 classifierIBK.buildClassifier(training);
                 eval = new Evaluation(testing);	
                 eval.evaluateModel(classifierIBK, testing); 
@@ -113,9 +142,33 @@ public class WalkForward {
         return eval;
     }
 
+    public static AttributeSelection featureSelection(Instances training) throws Exception{
+        //create AttributeSelection object
+		AttributeSelection filter = new AttributeSelection();
+		//create evaluator and search algorithm objects
+		CfsSubsetEval eval = new CfsSubsetEval();
+		GreedyStepwise search = new GreedyStepwise();
+		//set the algorithm to search backward
+		search.setSearchBackwards(true);
+		//set the filter to use the evaluator and search algorithm
+		filter.setEvaluator(eval);
+		filter.setSearch(search);
+		//specify the dataset
+		filter.setInputFormat(training);
+
+        return filter;
+    }
+
     public static void wekaApi(int iteration, int classifierIndex) throws Exception{
         File results = new File(CSV_FINAL);
         String classifier = "";
+        String selection = "";
+        boolean boolAppend = true;
+        Evaluation eval;
+        if(iteration == 1){
+            boolAppend = false;
+        }
+        
         switch (classifierIndex) {
             case 1:
                 classifier = "NaiveBayes";
@@ -146,18 +199,54 @@ public class WalkForward {
         training.setClassIndex(numAttr - 1);
         testing.setClassIndex(numAttr - 1);
 
+        if(!FS){
+            //Evaluation senza feature selection
+            selection = "No";
+            eval = classifier(training, testing, 1);
+        }
+
+        else{
+            //Evaluation con feature selection
+            selection = "Yes";
+            AttributeSelection filterTrain = featureSelection(training);
+            Instances newDataTrain = Filter.useFilter(training, filterTrain);
+            AttributeSelection filterTest = featureSelection(testing);
+            Instances newDataTest = Filter.useFilter(training, filterTest);
+            ArffSaver saver = new ArffSaver();
+            saver.setInstances(newDataTest);
+            saver.setFile(new File("sqdb3.arff"));
+            saver.writeBatch();
+
+            eval = classifier(newDataTrain, newDataTest, 1);
+        }
+
         //Calcolo % of training
         List<List<String>> trainingFile = Utility.csvToList(CSV_TRAINING);
+        List<List<String>> testingFile = Utility.csvToList(CSV_TESTING);
         List<List<String>> dataFile = Utility.csvToList(CSV_METHRICS);
         float trainingPerc = (trainingFile.size()/(float)dataFile.size())*100f;
-        System.out.println(trainingPerc);
+        
+        Double precision = eval.precision(1);
+        Double tP = eval.numTruePositives(1);
+        Double fP = eval.numFalsePositives(1);
+        Double tN = eval.numTrueNegatives(1);
+        Double fN = eval.numFalseNegatives(1);
 
-        Evaluation eval = classifier(training, testing, 1);
-        try(FileWriter finalResults = new FileWriter(results, true)){
-            if(iteration==1){finalResults.append("project,release,classifier,precision,recall,AUC,kappa\n");}
-
-            finalResults.append(PRJ_NAME+","+iteration+","+classifier+","+eval.areaUnderROC(1)+","+eval.kappa()+","+
-                                eval.precision(1)+","+eval.recall(1));
+        //Calcolo percentuale defective in training e testing
+        List<Float> defective = defectiveness();
+        Float trainDefectPrec = defective.get(0)/trainingFile.size();
+        Float testDefectPrec = defective.get(1)/testingFile.size();
+        if(precision.isNaN() && fP!=0d ||precision.isNaN() && fN!=0d){
+            precision = 0d;
+        }
+        else if(precision.isNaN() && fP==0d){
+            precision = 1d;
+        }
+        try(FileWriter finalResults = new FileWriter(results, boolAppend)){
+            if(iteration==1){finalResults.append("project,release,%training,%defective training,%defective testing,classifier,feature selection,TP,FP,TN,FN,precision,recall,AUC,kappa\n");}
+            finalResults.append(PRJ_NAME+","+iteration+","+trainingPerc+","+trainDefectPrec+","+testDefectPrec+","+classifier+","+selection+","+
+                                tP+","+fP+","+tN+","+fN+","+precision+","+eval.recall(1)+","+
+                                eval.areaUnderROC(1)+","+eval.kappa()+"\n");
         }
 	}
 
@@ -172,6 +261,7 @@ public class WalkForward {
         List<Pair<List<String>, String>> trainingTesting = versionSplit();
 
         for(i=0; i<trainingTesting.size();i++){
+            LOGGER.log(Level.INFO, "Iterazione walk foreward: {0}", i+1);
             List<String> training = trainingTesting.get(i).getValue0();
             String testing = trainingTesting.get(i).getValue1();
             try(FileWriter trainingWriter = new FileWriter(trainingFile);
@@ -198,7 +288,7 @@ public class WalkForward {
                     testingWriter.flush();
                 }
             }   
-            wekaApi(i, 1);
+            wekaApi(i+1, 1);
         }
     }
 
