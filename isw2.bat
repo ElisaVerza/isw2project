@@ -1,4 +1,3 @@
-git add .
-git commit -m "finito over/under sampling, smote"
-git push
+cd "C:\Users\savel\Documents\Universit?\ISW2\isw2project"
+mvn compile exec:java -Dexec.mainClass="dataanalysis.WalkForward"
 cmd /k

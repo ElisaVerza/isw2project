@@ -17,10 +17,11 @@ import datamining.CsvCreator;
 import datamining.Utility;
 
 import weka.core.Instances;
-
+import weka.classifiers.CostMatrix;
 import weka.classifiers.Evaluation;
 import weka.classifiers.bayes.NaiveBayes;
 import weka.classifiers.lazy.IBk;
+import weka.classifiers.meta.CostSensitiveClassifier;
 import weka.classifiers.meta.FilteredClassifier;
 import weka.classifiers.trees.RandomForest;
 import weka.core.converters.ArffSaver;
@@ -44,10 +45,13 @@ public class WalkForward {
     private static final String ARFF_TESTING = "testing.arff";
     private static final String PRJ_NAME = "Syncope";
     private static String selection = "";
+    private static final Double CFP = 1d;
+    private static final Double CFN = 1d;
     private static final String SAMPLING_TYPE = "smote";
     
     private static final boolean FS = true;
-    private static final boolean SAMPLING = true;
+    private static final boolean SAMPLING = false;
+    private static final boolean COST_SENSITIVE = true;
 
     public static  List<Pair<List<String>, String>> versionSplit() throws CsvValidationException, IOException{
         Integer j;
@@ -278,6 +282,54 @@ public class WalkForward {
         return eval;
     }
 
+    private static CostMatrix createCostMatrix(double weightFalsePositive, double weightFalseNegative) {
+        CostMatrix costMatrix = new CostMatrix(2);
+        costMatrix.setCell(0, 0, 0.0);
+        costMatrix.setCell(1, 0, weightFalsePositive);
+        costMatrix.setCell(0, 1, weightFalseNegative);
+        costMatrix.setCell(1, 1, 0.0);
+        return costMatrix;
+    }
+    
+    public static Evaluation costSensitive(Instances training, Instances testing, Integer classifierIndex) throws Exception{
+        CostSensitiveClassifier c1 = new CostSensitiveClassifier();  
+        Evaluation eval;      
+        
+        switch (classifierIndex) {
+            case 1:
+                c1.setClassifier(new NaiveBayes());
+                c1.setCostMatrix(createCostMatrix(CFP, CFN));
+                c1.buildClassifier(training);
+        
+                eval = new Evaluation(testing);	
+                eval.evaluateModel(c1, testing); 
+                break;
+            case 2:
+                c1.setClassifier(new RandomForest());
+                c1.setCostMatrix(createCostMatrix(CFP, CFN));
+                c1.buildClassifier(training);
+        
+                eval = new Evaluation(testing);	
+                eval.evaluateModel(c1, testing); 
+                break;
+            case 3:
+                c1.setClassifier(new IBk());
+                c1.setCostMatrix(createCostMatrix(CFP, CFN));
+                c1.buildClassifier(training);
+        
+                eval = new Evaluation(testing);	
+                eval.evaluateModel(c1, testing); 
+                break;
+
+
+            default:
+                eval = new Evaluation(null);
+                break;
+        }    
+        return eval;
+    }
+    
+
     public static void wekaApi(int iteration, int classifierIndex) throws Exception{
         File results = new File(CSV_FINAL);
         String classifier = "";
@@ -317,7 +369,12 @@ public class WalkForward {
         training.setClassIndex(numAttr - 1);
         testing.setClassIndex(numAttr - 1);
 
-        eval = filters(training, testing);
+        if(COST_SENSITIVE){
+            eval = costSensitive(training, testing, 1);
+        }
+        else{
+            eval = filters(training, testing);
+        }
 
         //Calcolo % of training
         List<List<String>> trainingFile = Utility.csvToList(CSV_TRAINING);
@@ -342,8 +399,8 @@ public class WalkForward {
             precision = 1d;
         }
         try(FileWriter finalResults = new FileWriter(results, boolAppend)){
-            if(iteration==1){finalResults.append("project,release,%training,%defective training,%defective testing,classifier,feature selection,TP,FP,TN,FN,precision,recall,AUC,kappa\n");}
-            finalResults.append(PRJ_NAME+","+iteration+","+trainingPerc+","+trainDefectPrec+","+testDefectPrec+","+classifier+","+selection+","+
+            if(iteration==1){finalResults.append("project,release,%training,%defective training,%defective testing,classifier,balancing,feature selection,TP,FP,TN,FN,precision,recall,AUC,kappa\n");}
+            finalResults.append(PRJ_NAME+","+iteration+","+trainingPerc+","+trainDefectPrec+","+testDefectPrec+","+classifier+","+SAMPLING_TYPE+","+selection+","+
                                 tP+","+fP+","+tN+","+fN+","+precision+","+eval.recall(1)+","+
                                 eval.areaUnderROC(1)+","+eval.kappa()+"\n");
         }
