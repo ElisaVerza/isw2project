@@ -21,6 +21,7 @@ import weka.core.Instances;
 import weka.classifiers.Evaluation;
 import weka.classifiers.bayes.NaiveBayes;
 import weka.classifiers.lazy.IBk;
+import weka.classifiers.meta.FilteredClassifier;
 import weka.classifiers.trees.RandomForest;
 import weka.core.converters.ArffSaver;
 import weka.core.converters.ConverterUtils.DataSource;
@@ -28,7 +29,8 @@ import weka.attributeSelection.CfsSubsetEval;
 import weka.attributeSelection.GreedyStepwise;
 import weka.filters.Filter;
 import weka.filters.supervised.attribute.AttributeSelection;
-
+import weka.filters.supervised.instance.Resample;
+import weka.filters.supervised.instance.SMOTE;
 public class WalkForward {
 
     private static final Logger LOGGER = Logger.getLogger(WalkForward.class.getName());
@@ -41,8 +43,11 @@ public class WalkForward {
     private static final String ARFF_TRAINING = "training.arff";
     private static final String ARFF_TESTING = "testing.arff";
     private static final String PRJ_NAME = "Syncope";
+    private static String selection = "";
+    private static final String SAMPLING_TYPE = "smote";
     
     private static final boolean FS = true;
+    private static final boolean SAMPLING = true;
 
     public static  List<Pair<List<String>, String>> versionSplit() throws CsvValidationException, IOException{
         Integer j;
@@ -159,10 +164,123 @@ public class WalkForward {
         return filter;
     }
 
+    public static Evaluation sampling(Instances training, Instances testing, Integer classifierIndex) throws Exception{
+        List<List<String>> trainingFile = Utility.csvToList(CSV_TRAINING);
+        Evaluation eval;
+        if(SAMPLING_TYPE.equals("smote")){
+            SMOTE resampleSmote = new SMOTE();
+            resampleSmote.setInputFormat(training);
+            switch (classifierIndex) {
+                case 1:
+                    FilteredClassifier fcNB = new FilteredClassifier();
+                    NaiveBayes classifierNB = new NaiveBayes();
+                    fcNB.setClassifier(classifierNB);
+                    fcNB.setFilter(resampleSmote);
+                    fcNB.buildClassifier(training);
+                    eval = new Evaluation(testing);	
+                    eval.evaluateModel(fcNB, testing); 
+                    break;
+                case 2:
+                    FilteredClassifier fcRF = new FilteredClassifier();
+                    RandomForest classifierRF = new RandomForest();
+                    fcRF.setClassifier(classifierRF);
+                    fcRF.setFilter(resampleSmote);
+                    fcRF.buildClassifier(training);
+                    eval = new Evaluation(testing);	
+                    eval.evaluateModel(fcRF, testing); 
+                    break;
+                case 3:
+                    FilteredClassifier fcIBK = new FilteredClassifier();
+                    IBk classifierIBK = new IBk();
+                    fcIBK.setClassifier(classifierIBK);
+                    fcIBK.setFilter(resampleSmote);
+                    classifierIBK.buildClassifier(training);
+                    eval = new Evaluation(testing);	
+                    eval.evaluateModel(fcIBK, testing); 
+                    break;
+    
+                default:
+                    eval = new Evaluation(null);
+                    break;
+            }    
+        }
+        else{
+            Resample resampleSmote = new Resample();
+            resampleSmote.setInputFormat(training);
+            if(SAMPLING_TYPE.equals("over")){
+                Float minority = (1-((defectiveness().get(0))/trainingFile.size()))*2;
+                resampleSmote.setOptions(new String[] {"-B","1.0","-Z",minority.toString()});
+            }
+            else{
+                Float minority = (defectiveness().get(0)/trainingFile.size())*2;
+                resampleSmote.setOptions(new String[] {"-B","1.0","-Z",minority.toString()});
+            }
+            switch (classifierIndex) {
+                case 1:
+                    FilteredClassifier fcNB = new FilteredClassifier();
+                    NaiveBayes classifierNB = new NaiveBayes();
+                    fcNB.setClassifier(classifierNB);
+                    fcNB.setFilter(resampleSmote);
+                    fcNB.buildClassifier(training);
+                    eval = new Evaluation(testing);	
+                    eval.evaluateModel(fcNB, testing); 
+                    break;
+                case 2:
+                    FilteredClassifier fcRF = new FilteredClassifier();
+                    RandomForest classifierRF = new RandomForest();
+                    fcRF.setClassifier(classifierRF);
+                    fcRF.setFilter(resampleSmote);
+                    fcRF.buildClassifier(training);
+                    eval = new Evaluation(testing);	
+                    eval.evaluateModel(fcRF, testing); 
+                    break;
+                case 3:
+                    FilteredClassifier fcIBK = new FilteredClassifier();
+                    IBk classifierIBK = new IBk();
+                    fcIBK.setClassifier(classifierIBK);
+                    fcIBK.setFilter(resampleSmote);
+                    classifierIBK.buildClassifier(training);
+                    eval = new Evaluation(testing);	
+                    eval.evaluateModel(fcIBK, testing); 
+                    break;
+    
+                default:
+                    eval = new Evaluation(null);
+                    break;
+            }    
+        }
+        return eval;
+    }
+    
+    public static Evaluation filters(Instances training, Instances testing) throws Exception{
+        Evaluation eval;
+        if(!FS){
+            //Evaluation senza feature selection
+            selection = "No";
+            
+            if(SAMPLING){eval = sampling(training, testing, 1);}
+            else{eval = classifier(training, testing, 1);}
+        }
+        else{
+            //Evaluation con feature selection
+            selection = "Yes";
+            AttributeSelection filterTrain = featureSelection(training);
+            Instances newDataTrain = Filter.useFilter(training, filterTrain);
+            AttributeSelection filterTest = featureSelection(testing);
+            Instances newDataTest = Filter.useFilter(training, filterTest);
+            ArffSaver saver = new ArffSaver();
+            saver.setInstances(newDataTest);
+            saver.setFile(new File("sqdb3.arff"));
+            saver.writeBatch();
+            if(SAMPLING){eval = sampling(newDataTrain, newDataTest, 1);}
+            else{eval = classifier(newDataTrain, newDataTest, 1);}
+        }
+        return eval;
+    }
+
     public static void wekaApi(int iteration, int classifierIndex) throws Exception{
         File results = new File(CSV_FINAL);
         String classifier = "";
-        String selection = "";
         boolean boolAppend = true;
         Evaluation eval;
         if(iteration == 1){
@@ -199,26 +317,7 @@ public class WalkForward {
         training.setClassIndex(numAttr - 1);
         testing.setClassIndex(numAttr - 1);
 
-        if(!FS){
-            //Evaluation senza feature selection
-            selection = "No";
-            eval = classifier(training, testing, 1);
-        }
-
-        else{
-            //Evaluation con feature selection
-            selection = "Yes";
-            AttributeSelection filterTrain = featureSelection(training);
-            Instances newDataTrain = Filter.useFilter(training, filterTrain);
-            AttributeSelection filterTest = featureSelection(testing);
-            Instances newDataTest = Filter.useFilter(training, filterTest);
-            ArffSaver saver = new ArffSaver();
-            saver.setInstances(newDataTest);
-            saver.setFile(new File("sqdb3.arff"));
-            saver.writeBatch();
-
-            eval = classifier(newDataTrain, newDataTest, 1);
-        }
+        eval = filters(training, testing);
 
         //Calcolo % of training
         List<List<String>> trainingFile = Utility.csvToList(CSV_TRAINING);
